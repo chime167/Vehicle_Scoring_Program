@@ -1,14 +1,11 @@
 #!usr/bin/env python3
 import pandas as pd
-import numpy as np
 import re
 from collections import defaultdict
 import sqlite3
 import json
-from lxml import etree
-import dicttoxml
-from xml.dom.minidom import parseString
 import math
+
 
 print('Input file name: ')
 file = input()
@@ -22,12 +19,14 @@ def read_s3db(db_file, filename):
         desc = c.description
         column_names = [col[0] for col in desc]
         data = [dict(zip(column_names, row)) for row in c]
+        # separating low and high scores into separate groups
         h = [d for d in data if d['score'] > 3]
         l = [d for d in data if d['score'] < 4]
         del_key = 'score'
         high_score = [{key: val for key, val in sub.items() if key != del_key} for sub in h]
         high_score_dict = {'convoy': high_score}
         low_score = [{key: val for key, val in sub.items() if key != del_key} for sub in l]
+    # the high scores go to json file    
     with open(f'{filename}.json', 'w') as json_file:
         json.dump(high_score_dict, json_file)
     if len(high_score) == 1:
@@ -35,6 +34,7 @@ def read_s3db(db_file, filename):
     else:
         print(f'{len(high_score)} vehicles were saved into {filename}.json')
     xml_df = pd.DataFrame(low_score).to_xml(root_name='convoy', index=False, row_name='vehicle', xml_declaration=False)
+    # low scores go to xml files
     with open(f'{filename}.xml', 'w') as xml_file:
         if len(low_score) == 0:
             xml_file.write('<convoy></convoy>')
@@ -51,6 +51,7 @@ def spreadsheet_parser(filename, extension):
     with sqlite3.connect(f'{filename}.s3db') as conn:
         c = conn.cursor()
     newfile = filename + '.csv'
+    # if it's already a s3db file then it has been checked and scored
     if extension == 's3db':
         read_s3db(file, filename)
         return
@@ -60,8 +61,8 @@ def spreadsheet_parser(filename, extension):
     else:
         my_df = pd.read_csv(file)
     count = 0
-    reg = r'\D+(\d+)'
-    reg2 = r'(\d+)\D+'
+    # regex to remove non digit characters from cells
+    reg = re.compile(r'\D*(\d+)\D*')
     df_dict = my_df.to_dict(orient='list')
     new_cells = defaultdict(list)
     if '[CHECKED]' in file:
@@ -69,13 +70,10 @@ def spreadsheet_parser(filename, extension):
     else:
         for i, v in df_dict.items():
             for c in v:
+                c = str(c)
                 m1 = re.match(reg, c)
-                m2 = re.match(reg2, c)
                 if m1:
                     new_cells[i].append(int(m1.group(1)))
-                    count += 1
-                elif m2:
-                    new_cells[i].append(int(m2.group(1)))
                     count += 1
                 else:
                     new_cells[i].append(int(c))
@@ -116,6 +114,8 @@ def spreadsheet_parser(filename, extension):
     read_s3db(f'{filename}.s3db', filename)
 
 
+
+# scoring function based on client's specifications
 def scoring_func(df):
     route_km = 450
     points = 0
@@ -137,6 +137,6 @@ def scoring_func(df):
     return points
 
 
-spreadsheet_parser(f, e)
+if __name__ == '__main__': spreadsheet_parser(f, e)
 
 
