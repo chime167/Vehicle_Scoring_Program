@@ -1,8 +1,9 @@
 #!usr/bin/env python3
+
 import pandas as pd
 import re
 from collections import defaultdict
-import sqlite3
+import pysqlite3
 import json
 import math
 
@@ -13,7 +14,7 @@ f, e = file.split('.')[0], file.split('.')[1]
 
 
 def read_s3db(db_file, filename):
-    with sqlite3.connect(db_file) as conn:
+    with pysqlite3.connect(db_file) as conn:
         c = conn.cursor()
         c.execute('SELECT * FROM convoy;')
         desc = c.description
@@ -48,7 +49,7 @@ def read_s3db(db_file, filename):
 
 
 def spreadsheet_parser(filename, extension):
-    with sqlite3.connect(f'{filename}.s3db') as conn:
+    with pysqlite3.connect(f'{filename}.s3db') as conn:
         c = conn.cursor()
     newfile = filename + '.csv'
     # if it's already a s3db file then it has been checked and scored
@@ -87,7 +88,7 @@ def spreadsheet_parser(filename, extension):
     checked_mf.to_csv(checked_name, index=None, header=None)
 
     filename = filename.replace('[CHECKED]', '')
-    conn = sqlite3.connect(f'{filename}.s3db')
+    conn = pysqlite3.connect(f'{filename}.s3db')
     c = conn.cursor()
     c.execute('DROP TABLE IF EXISTS convoy;')
     c.execute('CREATE TABLE convoy ({} INTEGER PRIMARY KEY NOT NULL , {} INTEGER NOT NULL, {} INTEGER NOT NULL, {} INTEGER NOT NULL, {} INTEGER NOT NULL);'.format(columns[0], columns[1], columns[2], columns[3], columns[4]))
