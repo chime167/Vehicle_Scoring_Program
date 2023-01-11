@@ -1,15 +1,15 @@
-#!usr/bin/env python3
+#!/usr/bin/env python3
 
 import pandas as pd
-import re
-from collections import defaultdict
 import pysqlite3
 import json
 import math
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('filename', help='Enter the filename or path to file')
+args = parser.parse_args()
 
-
-print('Input file name: ')
-file = input()
+file = args.filename
 f, e = file.split('.')[0], file.split('.')[1]
 
 
@@ -61,29 +61,16 @@ def spreadsheet_parser(filename, extension):
         my_df.to_csv(newfile, index=None)
     else:
         my_df = pd.read_csv(file)
-    count = 0
-    # regex to remove non digit characters from cells
-    reg = re.compile(r'\D*(\d+)\D*')
-    df_dict = my_df.to_dict(orient='list')
-    new_cells = defaultdict(list)
-    if '[CHECKED]' in file:
-        new_cells = df_dict
-    else:
-        for i, v in df_dict.items():
-            for c in v:
-                c = str(c)
-                m1 = re.match(reg, c)
-                if m1:
-                    new_cells[i].append(int(m1.group(1)))
-                    count += 1
-                else:
-                    new_cells[i].append(int(c))
+        count = my_df.apply(lambda x: x.str.contains(r'\D').sum(), axis=1)
+        count = sum([*filter(lambda x: x, count)])
+    my_df = my_df.replace(to_replace='\D', value='', regex=True)
+    my_df = my_df.astype('int64')
 
-    checked_mf = pd.DataFrame(new_cells)
-    checked_df = pd.DataFrame(new_cells)
-    checked_df['score'] = checked_df.apply(scoring_func, axis=1)
-    columns = list(checked_df.to_dict().keys())
-    rows = list(checked_df.to_dict().values())
+
+    checked_mf = my_df
+    my_df['score'] = my_df.apply(scoring_func, axis=1)
+    columns = list(my_df.to_dict().keys())
+    rows = list(my_df.to_dict().values())
     checked_name = filename + '[CHECKED].csv'
     checked_mf.to_csv(checked_name, index=None, header=None)
 
@@ -139,5 +126,3 @@ def scoring_func(df):
 
 
 if __name__ == '__main__': spreadsheet_parser(f, e)
-
-
