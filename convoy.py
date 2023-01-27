@@ -49,20 +49,36 @@ def read_s3db(db_file, filename):
 
 
 def spreadsheet_parser(filename, extension):
-    with pysqlite3.connect(f'{filename}.s3db') as conn:
-        c = conn.cursor()
+    try:
+        with pysqlite3.connect(f'{filename}.s3db') as conn:
+            c = conn.cursor()
+    except Exception as e:
+        print(f'There was an error opening the {extension} file. Check the path and make sure it exists.', e)
+        exit()
     newfile = filename + '.csv'
     # if it's already a s3db file then it has been checked and scored
     if extension == 's3db':
-        read_s3db(file, filename)
-        return
+        try:
+            read_s3db(file, filename)
+            return
+        except Exception as e:
+            print(f'There was an error opening the {extension} file. Check the path and make sure it exists.', e)
+            exit()
     if extension == 'xlsx':
-        my_df = pd.read_excel(file, sheet_name='Vehicles', dtype=str)
-        my_df.to_csv(newfile, index=None)
+        try:
+            my_df = pd.read_excel(file, sheet_name='Vehicles', dtype=str)
+            my_df.to_csv(newfile, index=None)
+        except Exception as e:
+            print(f'There was an error opening the {extension} file. Check the path and make sure it exists.', e)
+            exit()
     else:
-        my_df = pd.read_csv(file)
-        count = my_df.apply(lambda x: x.str.contains(r'\D').sum(), axis=1)
-        count = sum([*filter(lambda x: x, count)])
+        try:
+            my_df = pd.read_csv(file)
+            count = my_df.apply(lambda x: x.str.contains(r'\D').sum(), axis=1)
+            count = sum([*filter(lambda x: x, count)])
+        except Exception as e:
+            print(f'There was an error opening the {extension} file. Check the path and make sure it exists.', e)
+            exit()
     my_df = my_df.replace(to_replace='\D', value='', regex=True)
     my_df = my_df.astype('int64')
 
