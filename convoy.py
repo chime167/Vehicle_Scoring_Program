@@ -3,7 +3,7 @@
 import pandas as pd
 import pysqlite3
 import json
-import math
+from math import trunc
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', help='Enter the filename or path to file')
@@ -84,7 +84,7 @@ def spreadsheet_parser(filename, extension):
 
 
     checked_mf = my_df
-    my_df['score'] = my_df.apply(scoring_func, axis=1)
+    my_df['score'] = scoring_func(my_df)
     columns = list(my_df.to_dict().keys())
     rows = list(my_df.to_dict().values())
     checked_name = filename + '[CHECKED].csv'
@@ -120,6 +120,7 @@ def spreadsheet_parser(filename, extension):
 
 
 # scoring function based on client's specifications
+
 def scoring_func(df):
     route_km = 450
     points = 0
@@ -127,18 +128,10 @@ def scoring_func(df):
     engine_capacity = df['engine_capacity']
     maximum_load = df['maximum_load']
     burned_fuel = (route_km * fuel_consumption / 100)
-    number_of_stops = burned_fuel / engine_capacity
-    if math.trunc(number_of_stops) < 1:
-        points += 2
-    elif math.trunc(number_of_stops) < 2:
-        points += 1
-    if burned_fuel <= 230:
-        points += 2
-    elif burned_fuel > 230:
-        points += 1
-    if maximum_load >= 20:
-        points += 2
+    number_of_stops = (burned_fuel / engine_capacity).apply(trunc)
+    points += (2 * (number_of_stops < 1).astype(int)) + (1 * ((1 <= number_of_stops) & (2 > number_of_stops)).astype(int))
+    points += (2 * (burned_fuel <= 230).astype(int)) + (1 * (burned_fuel > 230).astype(int))
+    points += (2 * (maximum_load >= 20).astype(int))
     return points
-
 
 if __name__ == '__main__': spreadsheet_parser(f, e)
